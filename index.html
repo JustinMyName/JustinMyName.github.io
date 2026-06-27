@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Habit Tracker</title>
+    <style>
+        /* --- CSS: Das Design der App --- */
+        :root {
+            --primary: #6C63FF;
+            --bg: #f4f4f9;
+            --card-bg: #ffffff;
+            --text: #333;
+            --text-light: #888;
+            --success: #4CAF50;
+            --danger: #FF5252;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 0;
+            color: var(--text);
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            padding-bottom: 80px; /* Platz für Input-Feld */
+        }
+
+        header {
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin: 0;
+            color: var(--primary);
+        }
+
+        p.date {
+            color: var(--text-light);
+            margin-top: 5px;
+        }
+
+        /* Liste der Gewohnheiten */
+        .habit-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .habit-item {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
+        }
+
+        .habit-item:active {
+            transform: scale(0.98);
+        }
+
+        .habit-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-grow: 1;
+        }
+
+        .habit-name {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .habit-streak {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            background: #eee;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        /* Checkbox Styling */
+        .check-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: transparent;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .check-btn.checked {
+            background-color: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Löschen Button */
+        .delete-btn {
+            background: none;
+            border: none;
+            color: var(--danger);
+            font-size: 1.2rem;
+            margin-left: 10px;
+            cursor: pointer;
+            opacity: 0.5;
+        }
+
+        .delete-btn:hover {
+            opacity: 1;
+        }
+
+        /* Input Bereich unten */
+        .input-area {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card-bg);
+            padding: 15px 20px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+        }
+
+        .add-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-light);
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Habits</h1>
+        <p class="date" id="currentDate">Lade Datum...</p>
+    </header>
+
+    <ul class="habit-list" id="habitList">
+        <!-- Hier werden die Habits per JS eingefügt -->
+    </ul>
+
+    <div id="emptyState" class="empty-state" style="display: none;">
+        Keine Gewohnheiten eingetragen.<br>Füge oben eine neue hinzu!
+    </div>
+</div>
+
+<div class="input-area">
+    <input type="text" id="habitInput" placeholder="Neue Gewohnheit (z.B. 1L Wasser)">
+    <button class="add-btn" onclick="addHabit()">+</button>
+</div>
+
+<script>
+    /* --- JavaScript: Die Logik der App --- */
+
+    // 1. Daten laden oder initialisieren
+    let habits = JSON.parse(localStorage.getItem('myHabits')) || [];
+
+    // Datum anzeigen
+    const dateElement = document.getElementById('currentDate');
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    dateElement.textContent = new Date().toLocaleDateString('de-DE', options);
+
+    // 2. Funktion zum Rendern der Liste
+    function renderHabits() {
+        const list = document.getElementById('habitList');
+        const emptyState = document.getElementById('emptyState');
+        list.innerHTML = '';
+
+        if (habits.length === 0) {
+            emptyState.style.display = 'block';
+            return;
+        } else {
+            emptyState.style.display = 'none';
+        }
+
+        habits.forEach((habit, index) => {
+            const li = document.createElement('li');
+            li.className = 'habit-item';
+
+            // Prüfen, ob heute schon erledigt
+            const today = new Date().toDateString();
+            const isCompletedToday = habit.completedDates.includes(today);
+
+            li.innerHTML = `
+                <div class="habit-info">
+                    <div class="habit-name">${habit.name}</div>
+                    <div class="habit-streak">🔥 ${habit.streak} Tage</div>
+                </div>
+                <div style="display:flex; align-items:center;">
+                    <button class="check-btn ${isCompletedToday ? 'checked' : ''}"
+                            onclick="toggleHabit(${index})">
+                        ${isCompletedToday ? '✓' : ''}
+                    </button>
+                    <button class="delete-btn" onclick="deleteHabit(${index})">×</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    // 3. Habit hinzufügen
+    function addHabit() {
+        const input = document.getElementById('habitInput');
+        const name = input.value.trim();
+
+        if (name) {
+            const newHabit = {
+                name: name,
+                streak: 0,
+                completedDates: []
+            };
+            habits.push(newHabit);
+            saveAndRender();
+            input.value = '';
+        }
+    }
+
+    // 4. Status toggeln (Erledigt/Nicht erledigt)
+    function toggleHabit(index) {
+        const today = new Date().toDateString();
+        const habit = habits[index];
+
+        if (habit.completedDates.includes(today)) {
+            // Heute zurücksetzen
+            habit.completedDates = habit.completedDates.filter(d => d !== today);
+            // Streak prüfen (einfache Logik: wenn gestern auch gemacht, bleibt Streak, sonst 0)
+            // Für eine echte App bräuchte man komplexere Logik hier
+            habit.streak = Math.max(0, habit.streak - 1);
+        } else {
+            // Heute markieren
+            habit.completedDates.push(today);
+            habit.streak += 1;
+        }
+
+        saveAndRender();
+    }
+
+    // 5. Habit löschen
+    function deleteHabit(index) {
+        if(confirm('Diese Gewohnheit wirklich löschen?')) {
+            habits.splice(index, 1);
+            saveAndRender();
+        }
+    }
+
+    // 6. Daten speichern
+    function saveAndRender() {
+        localStorage.setItem('myHabits', JSON.stringify(habits));
+        renderHabits();
+    }
+
+    // Initiales Rendern beim Start
+    renderHabits();
+
+    // Enter-Taste im Inputfeld unterstützen
+    document.getElementById('habitInput').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            addHabit();
+        }
+    });
+
+</script>
+
+</body>
+</html>
